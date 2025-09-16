@@ -11,4 +11,3 @@ def hmm():
     """Contemplation..."""
     if helpers.get_answer():
         print(get_hmm())
-
