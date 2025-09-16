@@ -18,7 +18,7 @@ pipeline {
                 echo "Setting up Python virtual environment"
                 sh '''
                     python3 -m venv $VENV_DIR
-                    source $VENV_DIR/bin/activate
+                    . $VENV_DIR/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -29,7 +29,7 @@ pipeline {
             steps {
                 echo "Running Unit Tests with pytest"
                 sh '''
-                    source $VENV_DIR/bin/activate
+                    . $VENV_DIR/bin/activate
                     pytest tests --maxfail=1 --disable-warnings -q
                 '''
             }
@@ -39,7 +39,7 @@ pipeline {
             steps {
                 echo "Running flake8 for code quality"
                 sh '''
-                    source $VENV_DIR/bin/activate
+                    . $VENV_DIR/bin/activate
                     pip install flake8
                     flake8 sample tests
                 '''
