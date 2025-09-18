@@ -4,7 +4,7 @@ pipeline {
     parameters {
         string(name: 'GIT_URL', defaultValue: 'https://github.com/AnithaAnnem/python-based-task.git', description: 'Git repository URL')
         string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build')
-        string(name: 'SONAR_HOST_URL', defaultValue: 'http://54.197.45.84:9000', description: 'SonarQube server URL')
+        string(name: 'SONAR_HOST_URL', defaultValue: 'http://54.173.57.76:9000', description: 'SonarQube server URL')
     }
 
     environment {
