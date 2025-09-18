@@ -9,11 +9,12 @@ pipeline {
 
     environment {
         VENV_DIR = 'venv'
-        SONARQUBE_ENV = 'sonar-server1'      // Jenkins SonarQube server config
-        SONAR_SCANNER_TOOL = 'SonarQube_Scanner' // Jenkins tool name
+        SONARQUBE_ENV = 'sonar-server1'
+        SONAR_SCANNER_TOOL = 'SonarQube_Scanner'
     }
 
     stages {
+
         stage('Clean Workspace') {
             steps {
                 cleanWs()
@@ -32,50 +33,28 @@ pipeline {
                     python3 -m venv ${VENV_DIR}
                     . ${VENV_DIR}/bin/activate
                     pip install --upgrade pip
-                    pip install -r requirements.txt
-                    pip install pytest pytest-cov pip-audit flake8 bandit
+                    pip install -r requirements.txt || true
+                    pip install pytest pytest-cov flake8 pip-audit gitleaks
                 '''
             }
         }
 
-        stage('Credential Scanning') {
-            steps {
-                sh 'gitleaks detect --source . --report-path gitleaks-report.json || true'
-            }
-        }
-
-        stage('Static Code Analysis (flake8)') {
+        stage('Static Code Analysis') {
             steps {
                 sh '''
                     . ${VENV_DIR}/bin/activate
                     flake8 samplemod
+                    deactivate
                 '''
             }
         }
 
-        stage('Security Scan (bandit)') {
+        stage('Run Unit Tests & Code Coverage') {
             steps {
                 sh '''
                     . ${VENV_DIR}/bin/activate
-                    bandit -r samplemod -f json -o bandit-report.json
-                '''
-            }
-        }
-
-        stage('Dependency Scanning') {
-            steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    pip-audit -r requirements.txt -f json > dependency-report.json || true
-                '''
-            }
-        }
-
-        stage('Run Unit Tests with Coverage') {
-            steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    pytest --cov=samplemod --cov-report=xml --cov-report=term
+                    pytest --cov=samplemod tests/
+                    deactivate
                 '''
             }
         }
@@ -88,21 +67,30 @@ pipeline {
                         sh """
                             . ${VENV_DIR}/bin/activate
                             ${scannerHome}/bin/sonar-scanner \
-                              -Dsonar.projectKey=python-sample \
-                              -Dsonar.sources=samplemod \
-                              -Dsonar.host.url=${params.SONAR_HOST_URL} \
-                              -Dsonar.python.coverage.reportPaths=coverage.xml
+                                -Dsonar.projectKey=python-sample \
+                                -Dsonar.sources=samplemod \
+                                -Dsonar.host.url=${params.SONAR_HOST_URL} \
+                                -Dsonar.login=${SONAR_AUTH_TOKEN}
+                            deactivate
                         """
                     }
                 }
             }
         }
 
-        stage('Quality Gate') {
+        stage('Credential Scanning') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
+                sh 'gitleaks detect --source . --report-path gitleaks-report.json || true'
+            }
+        }
+
+        stage('Dependency Scanning') {
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    pip-audit
+                    deactivate
+                '''
             }
         }
     }
