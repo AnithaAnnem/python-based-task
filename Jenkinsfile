@@ -15,15 +15,11 @@ pipeline {
 
     stages {
         stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
+            steps { cleanWs() }
         }
 
         stage('Checkout') {
-            steps {
-                git branch: "${params.BRANCH}", url: "${params.GIT_URL}"
-            }
+            steps { git branch: "${params.BRANCH}", url: "${params.GIT_URL}" }
         }
 
         stage('Install Dependencies') {
@@ -32,8 +28,28 @@ pipeline {
                     python3 -m venv ${VENV_DIR}
                     . ${VENV_DIR}/bin/activate
                     pip install --upgrade pip
-                    pip install -r samplemod/requirements.txt
-                    pip install pytest pytest-cov pip-audit flake8
+                    pip install -r requirements.txt
+                    pip install pytest pytest-cov flake8 pip-audit
+                '''
+            }
+        }
+
+        stage('Static Code Analysis') {
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    flake8 samplemod
+                    deactivate
+                '''
+            }
+        }
+
+        stage('Run Unit Tests with Coverage') {
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    pytest --cov=samplemod tests/
+                    deactivate
                 '''
             }
         }
@@ -57,20 +73,8 @@ pipeline {
             }
         }
 
-        stage('Static Code Analysis') {
-            steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    flake8 samplemod
-                    deactivate
-                '''
-            }
-        }
-
         stage('Credential Scanning') {
-            steps {
-                sh 'gitleaks detect --source . --report-path gitleaks-report.json || true'
-            }
+            steps { sh 'gitleaks detect --source . --report-path gitleaks-report.json || true' }
         }
 
         stage('Dependency Scanning') {
@@ -78,16 +82,6 @@ pipeline {
                 sh '''
                     . ${VENV_DIR}/bin/activate
                     pip-audit
-                    deactivate
-                '''
-            }
-        }
-
-        stage('Run Unit Tests with Coverage') {
-            steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    pytest --cov=samplemod tests/
                     deactivate
                 '''
             }
@@ -100,11 +94,7 @@ pipeline {
             sh 'rm -rf ${VENV_DIR}'
             cleanWs()
         }
-        success {
-            echo 'Pipeline finished successfully!'
-        }
-        failure {
-            echo 'Build failed!'
-        }
+        success { echo 'Pipeline finished successfully!' }
+        failure { echo 'Build failed!' }
     }
 }
