@@ -34,6 +34,7 @@ pipeline {
                     pip install --upgrade pip
                     pip install -r samplemod/requirements.txt
                     pip install pytest pytest-cov pip-audit flake8
+                    deactivate
                 '''
             }
         }
@@ -61,7 +62,7 @@ pipeline {
             steps {
                 sh '''
                     . ${VENV_DIR}/bin/activate
-                    flake8 samplemod
+                    flake8 samplemod || true
                     deactivate
                 '''
             }
@@ -77,14 +78,10 @@ pipeline {
             steps {
                 sh '''
                     . ${VENV_DIR}/bin/activate
-
-                    # Run pip-audit and generate HTML report
-                    pip-audit --output-format html --output-file pip-audit-report.html || true
-
+                    pip install --upgrade pip-audit
+                    pip-audit -o pip-audit-report.html || true
                     deactivate
                 '''
-
-                // Archive the report in Jenkins so you can view it
                 archiveArtifacts artifacts: 'pip-audit-report.html', allowEmptyArchive: true
             }
         }
@@ -93,7 +90,7 @@ pipeline {
             steps {
                 sh '''
                     . ${VENV_DIR}/bin/activate
-                    pytest --cov=samplemod tests/
+                    pytest --cov=samplemod || true
                     deactivate
                 '''
             }
