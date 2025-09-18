@@ -31,7 +31,29 @@ pipeline {
                     . $VENV_DIR/bin/activate
                     pip install --upgrade pip
                     pip install -r samplemod/requirements.txt
-                    pip install pytest pytest-cov pip-audit gitleaks flake8
+                    pip install pytest pytest-cov pip-audit flake8 sonar-scanner
+                '''
+            }
+        }
+
+        stage('Bug Analysis with SonarQube') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                        . $VENV_DIR/bin/activate
+                        sonar-scanner \
+                        -Dsonar.projectKey=python-sample \
+                        -Dsonar.sources=samplemod/sample
+                    '''
+                }
+            }
+        }
+
+        stage('Static Code Analysis') {
+            steps {
+                sh '''
+                    . $VENV_DIR/bin/activate
+                    flake8 samplemod/sample
                 '''
             }
         }
@@ -39,8 +61,8 @@ pipeline {
         stage('Credential Scanning with Gitleaks') {
             steps {
                 sh '''
-                    . $VENV_DIR/bin/activate
-                    gitleaks detect --source=. --no-git --report-format sarif --report-path gitleaks-report.sarif || true
+                    # Using docker-free gitleaks if installed on node
+                    gitleaks detect --source=$(pwd) --no-git --report-format sarif --report-path gitleaks-report.sarif || true
                 '''
             }
             post {
@@ -69,21 +91,10 @@ pipeline {
             post {
                 always {
                     junit 'results.xml'
-                    // Use publishCoverage instead of cobertura
-                    publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('**/*.py')
+                    cobertura coberturaReportFile: 'coverage.xml'
                 }
             }
         }
-
-        stage('Code Quality Checks') {
-            steps {
-                sh '''
-                    . $VENV_DIR/bin/activate
-                    flake8 samplemod/sample
-                '''
-            }
-        }
-
     }
 
     post {
