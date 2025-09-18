@@ -77,9 +77,15 @@ pipeline {
             steps {
                 sh '''
                     . ${VENV_DIR}/bin/activate
-                    pip-audit
+
+                    # Run pip-audit and generate HTML report
+                    pip-audit --output-format html --output-file pip-audit-report.html || true
+
                     deactivate
                 '''
+
+                // Archive the report in Jenkins so you can view it
+                archiveArtifacts artifacts: 'pip-audit-report.html', allowEmptyArchive: true
             }
         }
 
