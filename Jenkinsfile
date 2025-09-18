@@ -9,12 +9,11 @@ pipeline {
 
     environment {
         VENV_DIR = 'venv'
-        SONARQUBE_ENV = 'sonar-server1'
-        SONAR_SCANNER_TOOL = 'SonarQube_Scanner'
+        SONARQUBE_ENV = 'sonar-server1'  
+        SONAR_SCANNER_TOOL = 'SonarQube_Scanner' 
     }
 
     stages {
-
         stage('Clean Workspace') {
             steps {
                 cleanWs()
@@ -33,28 +32,8 @@ pipeline {
                     python3 -m venv ${VENV_DIR}
                     . ${VENV_DIR}/bin/activate
                     pip install --upgrade pip
-                    pip install -r requirements.txt || true
-                    pip install pytest pytest-cov flake8 pip-audit gitleaks
-                '''
-            }
-        }
-
-        stage('Static Code Analysis') {
-            steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    flake8 samplemod
-                    deactivate
-                '''
-            }
-        }
-
-        stage('Run Unit Tests & Code Coverage') {
-            steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    pytest --cov=samplemod tests/
-                    deactivate
+                    pip install -r samplemod/requirements.txt
+                    pip install pytest pytest-cov pip-audit flake8
                 '''
             }
         }
@@ -78,6 +57,16 @@ pipeline {
             }
         }
 
+        stage('Static Code Analysis') {
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    flake8 samplemod
+                    deactivate
+                '''
+            }
+        }
+
         stage('Credential Scanning') {
             steps {
                 sh 'gitleaks detect --source . --report-path gitleaks-report.json || true'
@@ -89,6 +78,16 @@ pipeline {
                 sh '''
                     . ${VENV_DIR}/bin/activate
                     pip-audit
+                    deactivate
+                '''
+            }
+        }
+
+        stage('Run Unit Tests with Coverage') {
+            steps {
+                sh '''
+                    . ${VENV_DIR}/bin/activate
+                    pytest --cov=samplemod tests/
                     deactivate
                 '''
             }
