@@ -1,9 +1,14 @@
 pipeline {
     agent any
 
+    tools {
+        // If you have configured a Sonar Scanner in Jenkins global tools
+        sonarScanner 'SonarQube_Scanner'
+    }
+
     environment {
         VENV_DIR = 'venv'
-        SONARQUBE_ENV = 'sonar-server' // Jenkins SonarQube server config
+        SONARQUBE_ENV = 'sonar-server'   // Name from Jenkins SonarQube server config
     }
 
     stages {
@@ -30,13 +35,15 @@ pipeline {
                 echo "Running unit tests"
                 sh '''
                     . $VENV_DIR/bin/activate
-                    pytest samplemod/tests --maxfail=1 --disable-warnings -q --cov=samplemod --cov-report=xml
+                    pytest samplemod/tests \
+                        --maxfail=1 --disable-warnings -q \
+                        --cov=samplemod --cov-report=xml \
+                        --junitxml=test-results.xml
                 '''
             }
             post {
                 always {
-                    junit 'samplemod/tests/test-results.xml'
-                    echo "JUnit results published"
+                    junit 'test-results.xml'
                 }
             }
         }
@@ -53,17 +60,17 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                echo "Running SonarQube code quality analysis..."
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    script {
-                        def scannerHome = tool 'SonarQube_Scanner'
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
+                echo "Running SonarQube analysis"
+                withSonarQubeEnv('sonar-server') {
+                    withCredentials([string(credentialsId: 'python-sample-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            sonar-scanner \
                               -Dsonar.projectKey=python-sample \
                               -Dsonar.sources=. \
-                              -Dsonar.python.version=3 \
+                              -Dsonar.host.url=$SONAR_HOST_URL \
+                              -Dsonar.token=$SONAR_TOKEN \
                               -Dsonar.python.coverage.reportPaths=coverage.xml
-                        """
+                        '''
                     }
                 }
             }
