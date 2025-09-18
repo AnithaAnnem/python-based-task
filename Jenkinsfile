@@ -31,20 +31,44 @@ pipeline {
                     . $VENV_DIR/bin/activate
                     pip install --upgrade pip
                     pip install -r samplemod/requirements.txt
+                    pip install pytest pytest-cov pip-audit
                 '''
             }
         }
 
-        stage('Run Unit Tests') {
+        stage('Credential Scanning with Gitleaks') {
+            steps {
+                sh '''
+                    docker run --rm -v $(pwd):/repo zricethezav/gitleaks:latest detect --source=/repo --no-git --report-format sarif --report-path gitleaks-report.sarif || true
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'gitleaks-report.sarif', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Dependency Scanning') {
             steps {
                 sh '''
                     . $VENV_DIR/bin/activate
-                    pytest samplemod/tests --maxfail=1 --disable-warnings -q --junitxml=results.xml
+                    pip-audit -r samplemod/requirements.txt || true
+                '''
+            }
+        }
+
+        stage('Run Unit Tests with Coverage') {
+            steps {
+                sh '''
+                    . $VENV_DIR/bin/activate
+                    pytest samplemod/tests --cov=samplemod/sample --cov-report=xml --cov-report=term --junitxml=results.xml
                 '''
             }
             post {
                 always {
                     junit 'results.xml'
+                    cobertura coberturaReportFile: 'coverage.xml'
                 }
             }
         }
@@ -53,6 +77,7 @@ pipeline {
             steps {
                 sh '''
                     . $VENV_DIR/bin/activate
+                    pip install flake8
                     flake8 samplemod/sample
                 '''
             }
