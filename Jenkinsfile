@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     tools {
-        // If you have configured a Sonar Scanner in Jenkins global tools
         sonarScanner 'SonarQube_Scanner'
     }
 
