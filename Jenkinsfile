@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     tools {
-        SonarQubeScanner 'SonarQube_Scanner'   
+        hudson.plugins.sonar.SonarRunnerInstallation 'SonarQube_Scanner'
     }
 
     environment {
-        SONARQUBE_ENV = 'sonar-server'         
+        SONARQUBE_ENV = 'sonar-server'   
     }
 
     stages {
@@ -62,10 +62,10 @@ pipeline {
 
     post {
         success {
-            echo " Pipeline completed successfully. SonarQube analysis finished."
+            echo "Pipeline completed successfully. SonarQube analysis finished."
         }
         failure {
-            echo " Pipeline failed. Please check the logs in Jenkins."
+            echo "Pipeline failed. Please check the logs in Jenkins."
         }
         always {
             cleanWs()
