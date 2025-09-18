@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        SONARQUBE_ENV = 'sonar-server'   
+        VENV_DIR = 'venv'
     }
 
     stages {
@@ -19,16 +19,15 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: "${params.GIT_BRANCH}",
-                    url: "${params.GIT_URL}"
+                git branch: "${params.GIT_BRANCH}", url: "${params.GIT_URL}"
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 sh '''
-                    python3 -m venv venv
-                    source venv/bin/activate
+                    python3 -m venv $VENV_DIR
+                    . $VENV_DIR/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
@@ -38,31 +37,18 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 sh '''
-                    source venv/bin/activate
+                    . $VENV_DIR/bin/activate
                     pytest samplemod/tests --maxfail=1 --disable-warnings -q --junitxml=results.xml
                 '''
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Code Quality Checks') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    withCredentials([string(credentialsId: 'python-sample-token', variable: 'SONAR_TOKEN')]) {
-                        sh """
-                            sonar-scanner \
-                                -Dsonar.projectKey=python-sample \
-                                -Dsonar.sources=. \
-                                -Dsonar.host.url=$SONAR_HOST_URL \
-                                -Dsonar.login=$SONAR_TOKEN
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Publish Test Results') {
-            steps {
-                junit 'results.xml'
+                sh '''
+                    . $VENV_DIR/bin/activate
+                    flake8 samplemod/sample
+                '''
             }
         }
     }
