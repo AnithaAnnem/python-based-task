@@ -31,7 +31,7 @@ pipeline {
                     . $VENV_DIR/bin/activate
                     pip install --upgrade pip
                     pip install -r samplemod/requirements.txt
-                    pip install pytest pytest-cov pip-audit
+                    pip install pytest pytest-cov pip-audit gitleaks flake8
                 '''
             }
         }
@@ -39,7 +39,8 @@ pipeline {
         stage('Credential Scanning with Gitleaks') {
             steps {
                 sh '''
-                    docker run --rm -v $(pwd):/repo zricethezav/gitleaks:latest detect --source=/repo --no-git --report-format sarif --report-path gitleaks-report.sarif || true
+                    . $VENV_DIR/bin/activate
+                    gitleaks detect --source=. --no-git --report-format sarif --report-path gitleaks-report.sarif || true
                 '''
             }
             post {
@@ -68,7 +69,8 @@ pipeline {
             post {
                 always {
                     junit 'results.xml'
-                    cobertura coberturaReportFile: 'coverage.xml'
+                    // Use publishCoverage instead of cobertura
+                    publishCoverage adapters: [coberturaAdapter('coverage.xml')], sourceFileResolver: sourceFiles('**/*.py')
                 }
             }
         }
@@ -77,7 +79,6 @@ pipeline {
             steps {
                 sh '''
                     . $VENV_DIR/bin/activate
-                    pip install flake8
                     flake8 samplemod/sample
                 '''
             }
