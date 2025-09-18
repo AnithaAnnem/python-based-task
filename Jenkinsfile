@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         string(name: 'GIT_URL', defaultValue: 'https://github.com/AnithaAnnem/python-based-task.git', description: 'Git repository URL')
-        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch to build')
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build')
     }
 
     environment {
@@ -11,6 +11,7 @@ pipeline {
     }
 
     stages {
+
         stage('Clean Workspace') {
             steps {
                 cleanWs()
@@ -19,7 +20,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: "${params.GIT_BRANCH}", url: "${params.GIT_URL}"
+                git url: "${params.GIT_URL}", branch: "${params.BRANCH}"
             }
         }
 
@@ -29,7 +30,7 @@ pipeline {
                     python3 -m venv $VENV_DIR
                     . $VENV_DIR/bin/activate
                     pip install --upgrade pip
-                    pip install -r requirements.txt
+                    pip install -r samplemod/requirements.txt
                 '''
             }
         }
@@ -41,6 +42,11 @@ pipeline {
                     pytest samplemod/tests --maxfail=1 --disable-warnings -q --junitxml=results.xml
                 '''
             }
+            post {
+                always {
+                    junit 'results.xml'
+                }
+            }
         }
 
         stage('Code Quality Checks') {
@@ -51,17 +57,18 @@ pipeline {
                 '''
             }
         }
+
     }
 
     post {
         always {
+            echo "Cleaning up virtual environment"
+            sh 'rm -rf $VENV_DIR'
             cleanWs()
-        }
-        success {
-            echo "Pipeline completed successfully"
+            echo "Pipeline finished"
         }
         failure {
-            echo "Pipeline failed"
+            echo 'Build failed!'
         }
     }
 }
